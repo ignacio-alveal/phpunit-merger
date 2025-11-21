@@ -1,5 +1,5 @@
 {
-    "name": "nimut/phpunit-merger",
+    "name": "ignacio-alveal/phpunit-merger",
     "description": "Merge multiple PHPUnit reports into one file",
     "keywords": [
         "PHPUnit",
