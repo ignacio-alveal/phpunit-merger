@@ -95,7 +95,7 @@ class LogCommand extends Command
                 $element->setAttribute('parent', $parent->getAttribute('name'));
                 $attributes = $testSuite['@attributes'] ?? [];
                 foreach ($attributes as $key => $value) {
-                    $value = $key === 'name' ? $value : 0;
+                    $value = $key === 'name' || $key === 'file' ? $value : 0;
                     $element->setAttribute($key, (string)$value);
                 }
                 $parent->appendChild($element);
@@ -116,6 +116,13 @@ class LogCommand extends Command
 
     private function addTestCases(\DOMElement $parent, array $testCases)
     {
+        $statusTags = [
+            'error' => 'errors',
+            'failure' => 'failures',
+            'skipped' => 'skipped',
+            'warning' => 'warnings',
+        ];
+
         foreach ($testCases as $testCase) {
             $attributes = $testCase['@attributes'] ?? [];
             if (empty($testCase['@attributes']['name'])) {
@@ -124,17 +131,46 @@ class LogCommand extends Command
             $name = $testCase['@attributes']['name'];
 
             if (isset($this->domElements[$name])) {
-                continue;
+                $previusTestCase = $this->domElements[$name];
+                $hasActualTestCaseAStatusTag = !empty(array_intersect(array_keys($testCase), array_keys($statusTags)));
+                $hasPreviusTestCaseAStatusTag = $previusTestCase->childNodes->length > 0;
+
+                if ($hasActualTestCaseAStatusTag || !$hasPreviusTestCaseAStatusTag) {
+                    continue;
+                }
+
+                $this->addAttributeValueToTestSuite($parent, 'tests', -1);
+                foreach ($previusTestCase->childNodes as $child) {
+                    $this->addAttributeValueToTestSuite($parent, $statusTags[$child->nodeName], -1);
+                }
+                foreach ($previusTestCase->attributes as $attribute) {
+                    if (!is_numeric($attribute->nodeValue) || $attribute->nodeName === 'line') {
+                        continue;
+                    }
+                    $this->addAttributeValueToTestSuite($parent, $attribute->nodeName, -$attribute->nodeValue);
+                }
+
+                $parent->removeChild($previusTestCase);
+                unset($this->domElements[$name]);
             }
 
             $element = $this->document->createElement('testcase');
             foreach ($attributes as $key => $value) {
                 $element->setAttribute($key, (string)$value);
-                if (!is_numeric($value)) {
+                if (!is_numeric($value) || $key === 'line') {
                     continue;
                 }
                 $this->addAttributeValueToTestSuite($parent, $key, $value);
             }
+
+            $this->addAttributeValueToTestSuite($parent, 'tests', 1);
+            foreach ($statusTags as $key => $value) {
+                if (isset($testCase[$key])) {
+                    $this->addAttributeValueToTestSuite($parent, $value, 1);
+                    $element->appendChild($this->document->createElement($key));
+                }
+            }
+
             $parent->appendChild($element);
             $this->domElements[$name] = $element;
         }
