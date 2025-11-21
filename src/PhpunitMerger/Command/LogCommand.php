@@ -132,10 +132,14 @@ class LogCommand extends Command
 
             if (isset($this->domElements[$name])) {
                 $previusTestCase = $this->domElements[$name];
+                $previousTime = (float) ($previusTestCase->getAttribute('time') ?? 0);
+                $newTime = (float) ($testCase['@attributes']['time'] ?? 0);
                 $hasActualTestCaseAStatusTag = !empty(array_intersect(array_keys($testCase), array_keys($statusTags)));
                 $hasPreviusTestCaseAStatusTag = $previusTestCase->childNodes->length > 0;
 
-                if ($hasActualTestCaseAStatusTag || !$hasPreviusTestCaseAStatusTag) {
+                if ($hasActualTestCaseAStatusTag ||
+                    !$hasPreviusTestCaseAStatusTag &&
+                    $newTime < $previousTime) {
                     continue;
                 }
 
