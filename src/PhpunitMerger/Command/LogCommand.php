@@ -82,7 +82,8 @@ class LogCommand extends Command
         foreach ($testSuites as $testSuite) {
             if (empty($testSuite['@attributes']['name'])) {
                 if (!empty($testSuite['testsuite'])) {
-                    $this->addTestSuites($parent, $testSuite['testsuite']);
+                    $children = isset($testSuite['testsuite']['@attributes']) ? [$testSuite['testsuite']] : $testSuite['testsuite'];
+                    $this->addTestSuites($parent, $children);
                 }
                 continue;
             }
@@ -129,9 +130,9 @@ class LogCommand extends Command
                 continue;
             }
             $name = $testCase['@attributes']['name'];
-
-            if (isset($this->domElements[$name])) {
-                $previusTestCase = $this->domElements[$name];
+            $class = $testCase['@attributes']['class'];
+            if (isset($this->domElements[$class . '::' . $name])) {
+                $previusTestCase = $this->domElements[$class . '::' . $name];
                 $previousTime = (float) ($previusTestCase->getAttribute('time') ?? 0);
                 $newTime = (float) ($testCase['@attributes']['time'] ?? 0);
                 $hasActualTestCaseAStatusTag = !empty(array_intersect(array_keys($testCase), array_keys($statusTags)));
@@ -155,7 +156,7 @@ class LogCommand extends Command
                 }
 
                 $parent->removeChild($previusTestCase);
-                unset($this->domElements[$name]);
+                unset($this->domElements[$class . '::' . $name]);
             }
 
             $element = $this->document->createElement('testcase');
@@ -176,7 +177,7 @@ class LogCommand extends Command
             }
 
             $parent->appendChild($element);
-            $this->domElements[$name] = $element;
+            $this->domElements[$class . '::' . $name] = $element;
         }
     }
 
